@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Hi</title>
+    <style>
+        #svg{
+            width: 100%;
+            height: 100%;
+            margin-left:20%;
+            position: absolute;
+        }
+    </style>
+    <script src="js/topojson.v1.min.js"></script>
+    <script src="js/d3.js"></script>
+</head>
+<body>
+<div id="svg"></div>
+</body>
+</html>
+<script>
+    function drawworld(divname) {
+
+        d3.json("world.json", function(d) {
+            var svg=d3.select('#'+divname)
+                .append('svg')
+                .attr('width',1000)
+                .attr('height',800)
+                .attr('transform','translate(-10,-30)');
+        //   创建投影
+        var projection = d3.geoOrthographic()
+                .center([0, 0])
+                .translate([500,400])
+                .scale(300)
+                .rotate([0, 0, 0]),
+        //  创建地球方格生成器
+            gridGenerator = d3.geoGraticule();
+
+        //  创建路径生成器path
+            path = d3.geoPath().projection(projection);
+        //  渲染方格
+        svg.append('g')
+            .attr('class', 'grid')
+            .append('path')
+            .datum(gridGenerator)
+            .attr('class', 'graticule')
+            .attr('d', path)
+            .attr('stroke-width', '1px')
+            .attr('stroke', '#EEE')
+            .attr('fill','blue');
+
+            //  获取GeoJSON数据
+        var countries = topojson.feature(d,d.objects.countries).features;
+            // 渲染地图
+            svg.append('g')
+            .attr('class', 'map')
+            .selectAll('.country')
+            .data(countries)
+            .enter()
+            .append('path')
+            .attr('class', 'country')
+            .attr('d',path)
+            .style("fill",function (d,i) {
+                var color=d3.interpolate('green','gold','red','#C306FA');
+                return color(i/25);
+           });
+            //绑定动画效果
+            svg.selectAll("g").on("dblclick",function () {
+                window.cancelAnimationFrame(redraw)
+            })
+                .on("click",function () {
+                    redraw1();
+                })
+                .on("dblclick",function () {
+                    redraw2();
+                })
+                .call(d3.drag()
+                    .on("start",function () {})
+                    .on("drag",function () {
+                        console.log(d3.event);
+                        rotate = projection.rotate();
+                        projection.rotate([d3.event.x,-d3.event.y, rotate[2]]);
+                        svg.selectAll("g").selectAll("path").attr("d", path);
+                    }))
+            ;
+
+
+// 重绘函数左转
+        var i=0;
+            function redraw1() {
+                //  旋转地图角度
+               var step=2;
+               projection.rotate([step*i, 0, 0]);
+               path = d3.geoPath().projection(projection);
+                //  这里需要更新地球方格跟地图
+                svg.select('g.map')
+                    .selectAll('.country')
+                    .data(countries)
+                    .attr('d', path);
+                svg.select('g.grid')
+                    .selectAll('.graticule')
+                    .attr('d', path)
+                    .attr('stroke-width', '1px')
+                    .attr('stroke', '#EEE');
+                i++;
+//            //  准备执行下次动画
+                requestAnimationFrame(redraw1);
+            }
+//重绘函数右转
+        function redraw2() {
+            //  旋转地图角度
+            var step=-2;
+                projection.rotate([step*i, 0, 0]);
+                path = d3.geoPath().projection(projection);
+            //  这里需要更新地球方格跟地图
+            svg.select('g.map')
+                .selectAll('.country')
+                .data(countries)
+                .attr('d', path);
+            svg.select('g.grid')
+                .selectAll('.graticule')
+                .attr('d', path)
+                .attr('stroke-width', '1px')
+                .attr('stroke', '#EEE');
+            i++;
+            requestAnimationFrame(redraw2);
+        }
+        });
+    }
+    drawworld("svg");
+
+</script>
